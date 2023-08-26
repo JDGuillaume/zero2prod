@@ -4,6 +4,7 @@ use std::net::TcpListener;
 use uuid::Uuid;
 use zero2prod::{
     configuration::{get_configuration, DatabaseSettings},
+    email_client::EmailClient,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -37,12 +38,27 @@ async fn spawn_app() -> TestApp {
     configuration.database.database_name = Uuid::new_v4().to_string();
 
     let connection_pool = configure_database(&configuration.database).await;
-    let server = run(listener, connection_pool.clone()).expect("Failed to bind address.");
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+
+    let base_url = reqwest::Url::parse(&configuration.email_client.base_url)
+        .expect("Failed to parse provided base url.");
+
+    let email_client = EmailClient::new(
+        base_url,
+        sender_email,
+        configuration.email_client.authorization_token,
+    );
+
+    let server =
+        run(listener, connection_pool.clone(), email_client).expect("Failed to bind address.");
 
     // Launch the server as a background task.
     // tokio::spawn returns a handle to the spawned future,
     // but we have no use for it here.
-    let _ = tokio::spawn(server);
+    let _spawned_server = tokio::spawn(server);
 
     TestApp {
         address,
