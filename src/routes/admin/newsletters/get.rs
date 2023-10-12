@@ -6,6 +6,7 @@ use std::fmt::Write;
 pub async fn publish_newsletter_form(
     flash_messages: IncomingFlashMessages,
 ) -> Result<HttpResponse, actix_web::Error> {
+    let idempotency_key = uuid::Uuid::new_v4();
     let mut msg_html = String::new();
 
     for m in flash_messages.iter() {
@@ -36,6 +37,7 @@ pub async fn publish_newsletter_form(
                    rows="20" cols="50"></textarea>
                 </label>
                 <br>
+                <input hidden type="text" name="idempotency_key" value="{idempotency_key}">
                 <button type="submit">Publish</button>
               </form>
               <p><a href="/admin/dashboard">&lt;- Back</a></p>
