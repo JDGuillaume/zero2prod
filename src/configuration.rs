@@ -1,4 +1,5 @@
 use crate::domain::SubscriberEmail;
+use crate::email_client::EmailClient;
 use secrecy::{ExposeSecret, Secret};
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::{
@@ -103,6 +104,15 @@ impl EmailClientSettings {
 
     pub fn timeout(&self) -> std::time::Duration {
         std::time::Duration::from_millis(self.timeout_milliseconds)
+    }
+
+    pub fn client(self) -> EmailClient {
+        let sender_email = self.sender().expect("Invalid sender email address.");
+        let timeout = self.timeout();
+
+        let url = reqwest::Url::parse(&self.base_url).expect("Invalid base URL provided.");
+
+        EmailClient::new(url, sender_email, self.authorization_token, timeout)
     }
 }
 
